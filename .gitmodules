@@ -1,0 +1,6 @@
+[submodule "ros2_kvm_webrtc_sample/third_party/video-sdk-samples"]
+	path = ros2_kvm_webrtc_sample/third_party/video-sdk-samples
+	url = https://github.com/NVIDIA/video-sdk-samples.git
+[submodule "ros2_kvm_webrtc_sample/third_party/amazon-kinesis-video-streams-webrtc-sdk-c"]
+	path = ros2_kvm_webrtc_sample/third_party/amazon-kinesis-video-streams-webrtc-sdk-c
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-c.git

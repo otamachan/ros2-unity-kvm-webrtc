@@ -1,0 +1,15 @@
+---
+Language:        Cpp
+BasedOnStyle:  Google
+AllowShortFunctionsOnASingleLine: Inline
+DerivePointerAlignment: false
+IncludeBlocks:   Regroup
+IncludeCategories:
+  - Regex:           '^<.*\.h>'
+    Priority:        2
+  - Regex:           '^<.*\.hpp>'
+    Priority:        3
+  - Regex: '^<.*>'
+    Priority: 1
+PointerAlignment: Left
+...
