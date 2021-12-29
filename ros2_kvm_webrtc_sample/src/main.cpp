@@ -1,6 +1,8 @@
 #include <atomic>
+#include <charconv>
 #include <iostream>
 #include <queue>
+#include <string_view>
 
 #include <NvCodec/NvEncoder/NvEncoderCuda.h>
 #include <Samples.h>
@@ -9,6 +11,7 @@
 #include <Utils/NvEncoderCLIOptions.h>
 #include <cuda.h>
 
+#include <geometry_msgs/msg/twist.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
@@ -64,6 +67,10 @@ class KVSClient {
   void QueueEncodedFrame(EncodedFrame&& frame) {
     frameQueue.Enqueue(std::move(frame));
   }
+  void RegisterDataChannelMessageCallback(
+      std::function<void(std::string_view)>&& callback) {
+    dataChannelOnMessageCallback = std::move(callback);
+  }
   bool Init(PCHAR channel_name) {
     STATUS retStatus = STATUS_SUCCESS;
     PCHAR pChannelName;
@@ -111,7 +118,7 @@ class KVSClient {
     // pSampleConfiguration->audioSource = sendAudioPackets;
     pSampleConfiguration->videoSource = KVSClient::sendVideoPackets;
     // pSampleConfiguration->receiveAudioVideoSource = sampleReceiveVideoFrame;
-    pSampleConfiguration->onDataChannel = onDataChannel;
+    pSampleConfiguration->onDataChannel = KVSClient::onDataChannel;
     pSampleConfiguration->mediaType = SAMPLE_STREAMING_AUDIO_VIDEO;
     printf("[KVS Master] Finished setting audio and video handlers\n");
 
@@ -258,6 +265,25 @@ class KVSClient {
     delete instance;
     instance = nullptr;
   }
+  static VOID onDataChannelMessage(UINT64 customData,
+                                   PRtcDataChannel pDataChannel, BOOL isBinary,
+                                   PBYTE pMessage, UINT32 pMessageLen) {
+    UNUSED_PARAM(customData);
+    UNUSED_PARAM(pDataChannel);
+    if (isBinary) {
+      DLOGI("DataChannel Binary Message");
+    } else {
+      DLOGI("DataChannel String Message: %.*s\n", pMessageLen, pMessage);
+    }
+    KVSClient& kvs_client = GetInstance();
+    kvs_client.dataChannelOnMessageCallback(
+        std::string_view{reinterpret_cast<char*>(pMessage), pMessageLen});
+  }
+  static VOID onDataChannel(UINT64 customData,
+                            PRtcDataChannel pRtcDataChannel) {
+    DLOGI("New DataChannel has been opened %s \n", pRtcDataChannel->name);
+    dataChannelOnMessage(pRtcDataChannel, customData, onDataChannelMessage);
+  }
   static PVOID sendVideoPackets(PVOID args) {
     STATUS retStatus = STATUS_SUCCESS;
     PSampleConfiguration pSampleConfiguration = (PSampleConfiguration)args;
@@ -349,6 +375,7 @@ class KVSClient {
   ThreadSafeQueue<EncodedFrame> frameQueue;
   std::atomic<bool> ready{false};
   std::thread cleanupThread;
+  std::function<void(std::string_view)> dataChannelOnMessageCallback;
 
   static KVSClient* instance;
 };
@@ -433,18 +460,23 @@ class CudaEncoder {
   std::vector<uint8_t> pHostFrame;
 };
 
-class KVSWebRtcForwarder : public rclcpp::Node {
+class ROS2KVSWebRtcProxy : public rclcpp::Node {
  public:
-  KVSWebRtcForwarder(KVSClient& kvs_client,
+  ROS2KVSWebRtcProxy(KVSClient& kvs_client,
                      const rclcpp::NodeOptions& options = rclcpp::NodeOptions())
-      : KVSWebRtcForwarder(kvs_client, "", options) {}
-  KVSWebRtcForwarder(KVSClient& kvs_client, const std::string& name_space,
+      : ROS2KVSWebRtcProxy(kvs_client, "", options) {}
+  ROS2KVSWebRtcProxy(KVSClient& kvs_client, const std::string& name_space,
                      const rclcpp::NodeOptions& options = rclcpp::NodeOptions())
-      : Node("kvs_webrtc_forwarder", name_space, options),
+      : Node("ros2_kvs_webrtc_proxy", name_space, options),
         kvs_client_{kvs_client} {
     subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
         "image_raw", rclcpp::QoS(10),
-        std::bind(&KVSWebRtcForwarder::ImageCallback, this,
+        std::bind(&ROS2KVSWebRtcProxy::ImageCallback, this,
+                  std::placeholders::_1));
+    publisher_ =
+        this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+    kvs_client_.RegisterDataChannelMessageCallback(
+        std::bind(&ROS2KVSWebRtcProxy::DataChannelMessageCallback, this,
                   std::placeholders::_1));
     encoder_.Init();
   }
@@ -457,9 +489,25 @@ class KVSWebRtcForwarder : public rclcpp::Node {
         encoder_.Encode(msg->width, msg->height, msg->data);
     kvs_client_.QueueEncodedFrame(std::move(encoded_frame));
   }
+  void DataChannelMessageCallback(std::string_view msg) {
+    auto message = geometry_msgs::msg::Twist();
+    int x = 0;
+    int y = 0;
+    int ret = std::sscanf(msg.data(), "{\"x\":\"%d\",\"y\":\"%d\"}", &x, &y);
+    if (ret != 0) {
+      std::cerr << "Failed to parse:" << msg << std::endl;
+      return;
+    }
+    message.linear.x = y / 100.0;
+    message.angular.z = -x / 200.0;
+    RCLCPP_DEBUG(this->get_logger(), "command: linear.x=%f, angular.z=%f",
+                 message.linear.x, message.angular.z);
+    publisher_->publish(message);
+  }
 
  private:
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
   CudaEncoder encoder_;
   KVSClient& kvs_client_;
 };
@@ -469,7 +517,7 @@ int main(int argc, char* argv[]) {
   if (kvs_client.Init(SAMPLE_CHANNEL_NAME)) {
     kvs_client.Run();
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<KVSWebRtcForwarder>(kvs_client));
+    rclcpp::spin(std::make_shared<ROS2KVSWebRtcProxy>(kvs_client));
     rclcpp::shutdown();
   }
   kvs_client.CleanUp();

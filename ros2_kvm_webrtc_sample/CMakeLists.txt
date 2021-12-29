@@ -6,7 +6,7 @@ if(NOT CMAKE_C_STANDARD)
 endif()
 
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -17,6 +17,7 @@ add_subdirectory(third_party/amazon-kinesis-video-streams-webrtc-sdk-c)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
@@ -64,7 +65,10 @@ add_executable(${PROJECT_NAME}_node src/main.cpp)
 add_definitions(
   -DKVS_CA_CERT_PATH="${CMAKE_SOURCE_DIR}/third_party/amazon-kinesis-video-streams-webrtc-sdk-c/certs/cert.pem"
   )
-ament_target_dependencies(${PROJECT_NAME}_node "rclcpp" "sensor_msgs")
+ament_target_dependencies(${PROJECT_NAME}_node
+                          "geometry_msgs"
+                          "rclcpp"
+                          "sensor_msgs")
 target_compile_options(${PROJECT_NAME}_node PRIVATE ${COMPILER_OPTIONS})
 target_include_directories(${PROJECT_NAME}_node PRIVATE /usr/local/cuda/include)
 target_link_libraries(${PROJECT_NAME}_node
