@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.595.0.min.js"></script>
+  <script src="https://unpkg.com/amazon-kinesis-video-streams-webrtc/dist/kvs-webrtc.min.js"></script>
+  <script src="https://github.com/bobboteck/JoyStick/releases/download/v2.0.0/joy.min.js"></script>
+  <title>ROS2 Unity Robot Controller</title>
+</head>
+<body>
+  <label for="key">AWS Region:</label><input type="text" id="region" name="region" value="ap-northeast-1"><br>
+  <label for="key">AWS_ACCESS_KEY_ID :</label><input type="text" id="awsAccessKey" name="awsAccessKey" value=""><br>
+  <label for="key">AWS_SECRET_ACCESS_KEY :</labbel><input type="password" id="awsSecretAccessKey" name="awsSecretAccessKey" value=""><br>
+  <label for="key">Channel Name :</labbel><input type="text" id="channel" name="channel" value="ScaryTestChannel"><br>
+  <button id="connect_button" onclick="connect()">Connect</button>
+  <button id="disconnect_button" onclick="disconnect()">Disconnect</button>
+  <br />
+  <div id="joyDiv" style="width:200px;height:200px;margin-bottom:20px;"></div>
+  <video id='remote_view' width="640px" height="480px" style="border: solid black 1px;"></video>
+</body>
+<script src="app.js"></script>
+</html>
