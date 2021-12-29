@@ -491,15 +491,23 @@ class ROS2KVSWebRtcProxy : public rclcpp::Node {
   }
   void DataChannelMessageCallback(std::string_view msg) {
     auto message = geometry_msgs::msg::Twist();
-    int x = 0;
-    int y = 0;
-    int ret = std::sscanf(msg.data(), "{\"x\":\"%d\",\"y\":\"%d\"}", &x, &y);
-    if (ret != 0) {
+    double x = 0;
+    double y = 0;
+    double z = 0;
+    double pitch = 0;
+    double yaw = 0;
+    int ret =
+        std::sscanf(msg.data(), "{\"x\":%lf,\"y\":%lf,\"z\":%lf,\"yaw\":%lf}",
+                    &x, &y, &z, &yaw);
+    if (ret == 0) {
       std::cerr << "Failed to parse:" << msg << std::endl;
       return;
     }
-    message.linear.x = y / 100.0;
-    message.angular.z = -x / 200.0;
+    message.linear.x = x;
+    message.linear.y = y;
+    message.linear.z = z;
+    message.angular.y = pitch;
+    message.angular.z = yaw;
     RCLCPP_DEBUG(this->get_logger(), "command: linear.x=%f, angular.z=%f",
                  message.linear.x, message.angular.z);
     publisher_->publish(message);
