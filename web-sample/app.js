@@ -1,4 +1,5 @@
 var joy = new JoyStick('joyDiv');
+var joy2 = new JoyStick('joyDiv2', {internalFillColor: '#AA0000', externalStrokeColor: '#880000'});
 var viewer = {};
 
 function getRandomClientId() {
@@ -9,7 +10,7 @@ function getRandomClientId() {
 }
 
 function joyControl() {
-    viewer.dataChannel.send(JSON.stringify({x: joy.GetX(), y: joy.GetY()}));
+    viewer.dataChannel.send(JSON.stringify({x: joy.GetY() / 50.0, y: -joy2.GetX() / 50.0, z: joy2.GetY() / 50.0, yaw: -joy.GetX() / 100.0}));
 }
 
 async function connect() {
