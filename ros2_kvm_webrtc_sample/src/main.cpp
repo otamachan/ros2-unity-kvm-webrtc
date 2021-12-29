@@ -30,6 +30,10 @@ class ThreadSafeQueue {
   void Enqueue(T&& value) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(std::move(value));
+    if (queue_.size() > 10) {
+      std::cerr << "EncodedFrame queue got full. abandoned" << std::endl;
+      queue_.pop();
+    }
     condition_.notify_one();
   }
   T Dequeue(void) {
@@ -174,9 +178,8 @@ class KVSClient {
     return false;
   }
   void Run() {
-    std::thread t([this] {
+    cleanupThread = std::thread([this] {
       STATUS retStatus = STATUS_SUCCESS;
-      sessionCleanupWait(pSampleConfiguration);
       retStatus = sessionCleanupWait(pSampleConfiguration);
       if (retStatus != STATUS_SUCCESS) {
         printf(
@@ -188,8 +191,12 @@ class KVSClient {
     });
   }
   void CleanUp() {
-    STATUS retStatus = STATUS_SUCCESS;
     printf("[KVS Master] Cleaning up....\n");
+    if (cleanupThread.joinable()) {
+      ATOMIC_STORE_BOOL(&pSampleConfiguration->interrupted, TRUE);
+      cleanupThread.join();
+    }
+    STATUS retStatus = STATUS_SUCCESS;
     if (pSampleConfiguration != NULL) {
       // Kick of the termination sequence
       ATOMIC_STORE_BOOL(&pSampleConfiguration->appTerminateFlag, TRUE);
@@ -273,6 +280,7 @@ class KVSClient {
     frame.presentationTs = 0;
 
     kvs_client.ready.store(true);
+    printf("[KVS Master] sendVideoPackets(): started\n");
     while (!ATOMIC_LOAD_BOOL(&pSampleConfiguration->appTerminateFlag)) {
       const EncodedFrame encoded_frame = kvs_client.frameQueue.Dequeue();
       for (const auto& packet : encoded_frame.packets) {
@@ -340,6 +348,7 @@ class KVSClient {
   SignalingClientMetrics signalingClientMetrics;
   ThreadSafeQueue<EncodedFrame> frameQueue;
   std::atomic<bool> ready{false};
+  std::thread cleanupThread;
 
   static KVSClient* instance;
 };
@@ -377,7 +386,13 @@ class CudaEncoder {
     enc->CreateDefaultEncoderParams(&initializeParams,
                                     encodeCLIOptions.GetEncodeGUID(),
                                     encodeCLIOptions.GetPresetGUID());
+    // send IDR periodically
+    initializeParams.encodeConfig->gopLength = 60;
+    initializeParams.encodeConfig->encodeCodecConfig.h264Config.idrPeriod = 60;
+    initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS =
+        1;
     encodeCLIOptions.SetInitParams(&initializeParams, eFormat);
+    // std::cout << NvEncoderInitParam().FullParamToString(&initializeParams);
     enc->CreateEncoder(&initializeParams);
 
     int nFrameSize = enc->GetFrameSize();
@@ -452,6 +467,7 @@ class KVSWebRtcForwarder : public rclcpp::Node {
 int main(int argc, char* argv[]) {
   KVSClient& kvs_client = KVSClient::GetInstance();
   if (kvs_client.Init(SAMPLE_CHANNEL_NAME)) {
+    kvs_client.Run();
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<KVSWebRtcForwarder>(kvs_client));
     rclcpp::shutdown();
