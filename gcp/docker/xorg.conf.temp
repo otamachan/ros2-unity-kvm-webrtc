@@ -1,0 +1,68 @@
+Section "ServerLayout"
+    Identifier     "Layout0"
+    Screen      0  "Screen0" 0 0
+    InputDevice    "Keyboard0" "CoreKeyboard"
+    InputDevice    "Mouse0" "CorePointer"
+    MatchSeat      "seat1"
+EndSection
+
+Section "Files"
+    ModulePath     "/usr/lib/x86_64-linux-gnu/nvidia/xorg"
+    ModulePath     "/usr/lib/xorg/modules"
+EndSection
+
+Section "InputDevice"
+    Identifier     "Mouse0"
+    Driver         "mouse"
+    Option         "Protocol" "auto"
+    Option         "Device" "/dev/psaux"
+    Option         "Emulate3Buttons" "no"
+    Option         "ZAxisMapping" "4 5"
+EndSection
+
+Section "InputDevice"
+    Identifier     "Keyboard0"
+    Driver         "kbd"
+EndSection
+
+Section "Monitor"
+    Identifier     "Monitor0"
+    VendorName     "Unknown"
+    ModelName      "Unknown"
+    HorizSync       28.0 - 33.0
+    VertRefresh     43.0 - 72.0
+    Option         "DPMS"
+    ModeLine       "1024x768" 65.00 1024 1048 1184 1344 768 771 777 806 -HSync -VSync
+    ModeLine       "1280x960" 108.00 1280 1376 1488 1800 960 961 964 1000 +HSync +VSync
+    ModeLine       "1280x1024" 108.00 1280 1328 1440 1688 1024 1025 1028 1066 +HSync +VSync
+    ModeLine       "1600x1024" 106.91 1600 1620 1640 1670 1024 1027 1030 1067 -HSync -VSync
+    ModeLine       "1920x1200" 193.16 1920 2048 2256 2592 1200 1201 1204 1242 +HSync +VSync
+    ModeLine       "1920x1440" 234.00 1920 2048 2256 2600 1440 1441 1444 1500 -HSync +VSync
+EndSection
+
+Section "Device"
+    Identifier     "Device0"
+    Driver         "nvidia"
+    VendorName     "NVIDIA Corporation"
+    BusId          "PCI:${XORG_BUSID}"
+    MatchSeat      "seat1"
+    Option         "nopowerconnectorcheck"
+    Option         "ExactModeTimingsDVI" "ON"
+EndSection
+
+Section "Screen"
+    Identifier     "Screen0"
+    Device         "Device0"
+    Monitor        "Monitor0"
+    DefaultDepth    24
+    SubSection     "Display"
+        Depth       24
+        Virtual    ${XORG_VIRTUAL}
+        Modes      "${XORG_MODE}"
+    EndSubSection
+    MatchSeat      "seat1"
+    Option         "AllowEmptyInitialConfiguration" "True"
+    Option         "ConnectedMonitor" "DFP"
+    Option         "UseDisplayDevice" "DFP-0"
+    Option         "ModeValidation" "AllowNonEdidModes"
+EndSection
