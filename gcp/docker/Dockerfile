@@ -32,6 +32,7 @@ RUN dpkg --add-architecture i386 \
 # xserver-xorg-video-nvidia-XXX is what we actually want to install
 ENV NVIDIA_DRIVER_MAJOR_VERSION=460
 ENV NVIDIA_DRIVER_PACKAGE_VERSION=460.91.03-0ubuntu1
+ENV CUDA_PACKAGE_VERSION=10-2
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin \
     && mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 \
     && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub \
@@ -57,6 +58,11 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86
             nvidia-settings=${NVIDIA_DRIVER_PACKAGE_VERSION} \
             xserver-xorg-video-nvidia-${NVIDIA_DRIVER_MAJOR_VERSION}=${NVIDIA_DRIVER_PACKAGE_VERSION} \
             libxnvctrl0=${NVIDIA_DRIVER_PACKAGE_VERSION} \
+    && apt-get install -y --no-install-recommends \
+            cuda-compiler-${CUDA_PACKAGE_VERSION} \
+            cuda-command-line-tools-${CUDA_PACKAGE_VERSION} \
+            cuda-libraries-${CUDA_PACKAGE_VERSION} \
+            cuda-libraries-dev-${CUDA_PACKAGE_VERSION} \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
@@ -113,6 +119,7 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        ros-foxy-desktop \
+       python3-colcon-common-extensions \
     && rm -rf /var/lib/apt/lists/*
 
 COPY xorg.conf.temp /etc/X11/
