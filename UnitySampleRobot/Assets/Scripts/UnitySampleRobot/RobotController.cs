@@ -12,8 +12,6 @@ public class RobotController : MonoBehaviour
     private ISubscription<geometry_msgs.msg.Twist> cmdVelSubsciber;
 
     geometry_msgs.msg.Twist lastMsg;
-    private float speed = 0.0F;
-    private float angleSpeed = 0.0F;
     private DateTime lastTime;
 
     void Start()
