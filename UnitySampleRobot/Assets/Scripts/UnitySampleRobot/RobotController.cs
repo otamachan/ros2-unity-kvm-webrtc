@@ -31,7 +31,12 @@ public class RobotController : MonoBehaviour
         if ((DateTime.Now - lastTime).TotalMilliseconds > 500)
         {
             // timeout
-            lastMsg = new geometry_msgs.msg.Twist();
+            lastMsg.Linear.X = 0;
+            lastMsg.Linear.Y = 0;
+            lastMsg.Linear.Z = 0;
+            lastMsg.Angular.X = 0;
+            lastMsg.Angular.Y = 0;
+            lastMsg.Angular.Z = 0;
         }
         transform.Translate(-(float)lastMsg.Linear.Y * Time.deltaTime, (float)lastMsg.Linear.Z * Time.deltaTime, (float)lastMsg.Linear.X * Time.deltaTime, Space.Self);
         transform.Rotate((float)lastMsg.Angular.Y * Mathf.Rad2Deg * Time.deltaTime, -(float)lastMsg.Angular.Z * Mathf.Rad2Deg * Time.deltaTime, 0.0F, Space.Self);
